@@ -5,9 +5,15 @@ import (
 	serviceHandlers "forum/internal/app/service/handlers"
 	serviceRepo "forum/internal/app/service/repository"
 	serviceUsecase "forum/internal/app/service/usecase"
+
 	userHandlers "forum/internal/app/user/handlers"
 	userRepo "forum/internal/app/user/repository"
 	userUsecase "forum/internal/app/user/usecase"
+
+	threadHandlers "forum/internal/app/thread/handlers"
+	threadRepo "forum/internal/app/thread/repository"
+	threadUCase "forum/internal/app/thread/usecase"
+
 	router2 "github.com/fasthttp/router"
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
@@ -32,11 +38,18 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	threadRepository := threadRepo.NewRepo(postgres.GetPostgres())
+	if err := threadRepository.Prepare(); err != nil {
+		log.Fatalln(err)
+	}
+
 	userUseCase := userUsecase.NewUseCase(*userRepository)
 	serviceUseCase := serviceUsecase.NewUseCase(*serviceRepository)
+	threadUseCase := threadUCase.NewUseCase(*threadRepository)
 
 	userHandler := userHandlers.NewHandler(*userUseCase)
 	serviceHandler := serviceHandlers.NewHandler(*serviceUseCase)
+	threadHandler := threadHandlers.NewHandler(*threadUseCase)
 
 	router := router2.New()
 
@@ -49,6 +62,12 @@ func main() {
 	router.POST("/api/service/clear", serviceHandler.ClearDB)
 
 	router.GET("/api/service/status", serviceHandler.Status)
+
+	router.GET("/api/thread/{slug_or_id}/details", threadHandler.ThreadInfo)
+
+	router.POST("/api/thread/{slug_or_id}/details", threadHandler.ChangeThread)
+
+	router.POST("/api/thread/{slug_or_id}/vote", threadHandler.VoteThread)
 
 	if err := fasthttp.ListenAndServe(":5000", router.Handler); err != nil {
 		log.Fatal(err)
