@@ -14,6 +14,10 @@ import (
 	threadRepo "forum/internal/app/thread/repository"
 	threadUCase "forum/internal/app/thread/usecase"
 
+	forumHandlers "forum/internal/app/forum/handlers"
+	forumRepo "forum/internal/app/forum/repository"
+	forumUsecase "forum/internal/app/forum/usecase"
+
 	router2 "github.com/fasthttp/router"
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
@@ -43,10 +47,17 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	forumRepository := forumRepo.NewRepo(postgres.GetPostgres())
+	if err := forumRepository.Prepare(); err != nil {
+		log.Fatalln(err)
+	}
+
 	userUseCase := userUsecase.NewUseCase(*userRepository)
 	serviceUseCase := serviceUsecase.NewUseCase(*serviceRepository)
 	threadUseCase := threadUCase.NewUseCase(*threadRepository)
+	forumUseCase := forumUsecase.NewUseCase(*forumRepository, *userRepository, *threadRepository)
 
+	forumHandler := forumHandlers.NewHandler(*forumUseCase)
 	userHandler := userHandlers.NewHandler(*userUseCase)
 	serviceHandler := serviceHandlers.NewHandler(*serviceUseCase)
 	threadHandler := threadHandlers.NewHandler(*threadUseCase)
@@ -68,6 +79,20 @@ func main() {
 	router.POST("/api/thread/{slug_or_id}/details", threadHandler.ChangeThread)
 
 	router.POST("/api/thread/{slug_or_id}/vote", threadHandler.VoteThread)
+
+	router.POST("/api/forum/create", forumHandler.Create)
+
+	//done
+	router.GET("/api/forum/{slug}/details", forumHandler.Details)
+
+	//done
+	router.POST("/api/forum/{slug}/create", forumHandler.CreateThread)
+
+	//done
+	router.GET("/api/forum/{slug}/users", forumHandler.GetUsers)
+
+	//done
+	router.GET("/api/forum/{slug}/threads", forumHandler.GetThreads)
 
 	if err := fasthttp.ListenAndServe(":5000", router.Handler); err != nil {
 		log.Fatal(err)
