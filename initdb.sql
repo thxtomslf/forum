@@ -18,6 +18,8 @@ UNLOGGED TABLE dbforum.users
     email    CITEXT UNIQUE         NOT NULL
 );
 
+create index user_nickname_idx on dbforum.users (nickname);
+create index user_email_idx on dbforum.users (email);
 
 CREATE
 UNLOGGED TABLE dbforum.forum
@@ -34,6 +36,7 @@ UNLOGGED TABLE dbforum.forum
         REFERENCES dbforum.users (nickname)
 );
 
+create index forum_slug_idx on dbforum.forum (slug);
 
 CREATE
 UNLOGGED TABLE dbforum.thread
@@ -53,6 +56,10 @@ UNLOGGED TABLE dbforum.thread
     FOREIGN KEY (author_nickname)
         REFERENCES dbforum.users (nickname)
 );
+create index thread_forum_slug_idx on dbforum.thread (forum_slug);
+create index thread_slug_id_forum_slug_idx on dbforum.thread (slug, id, forum_slug);
+create index thread_slug_idx on dbforum.thread (slug);
+create index thread_created_idx on dbforum.thread (created);
 
 CREATE
 UNLOGGED TABLE dbforum.votes
@@ -68,6 +75,7 @@ UNLOGGED TABLE dbforum.votes
         REFERENCES dbforum.thread (id)
 );
 
+create index votes_thread_id_nickname_voice_idx on dbforum.votes (thread_id, nickname, voice);
 
 CREATE
 UNLOGGED TABLE dbforum.post
@@ -91,6 +99,10 @@ UNLOGGED TABLE dbforum.post
         REFERENCES dbforum.thread (id)
 );
 
+create index posts_thread_id_parent_idx on dbforum.post (thread_id, parent);
+create index posts_tree_id_idx on dbforum.post (tree, id);
+create index posts_tree_idx on dbforum.post using gin (tree);
+
 CREATE
 UNLOGGED TABLE dbforum.forum_users
 (
@@ -107,3 +119,114 @@ UNLOGGED TABLE dbforum.forum_users
 
     PRIMARY KEY (nickname, forum_slug)
 );
+create index forum_users_forum_slug_idx on dbforum.forum_users (forum_slug);
+
+CREATE
+OR REPLACE FUNCTION dbforum.insert_forum_user() RETURNS TRIGGER AS
+$$
+BEGIN
+INSERT INTO dbforum.forum_users(forum_slug, nickname, fullname, about, email)
+SELECT NEW.forum_slug, nickname, fullname, about, email
+FROM dbforum.users
+WHERE nickname = NEW.author_nickname ON CONFLICT DO NOTHING;
+RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+CREATE
+OR REPLACE FUNCTION dbforum.update_forum_threads() RETURNS TRIGGER AS
+$$
+BEGIN
+UPDATE dbforum.forum
+SET threads = threads + 1
+WHERE slug = NEW.forum_slug;
+RETURN NEW;
+END
+$$
+LANGUAGE plpgsql;
+
+CREATE
+OR REPLACE FUNCTION dbforum.update_forum_posts() RETURNS TRIGGER AS
+$$
+BEGIN
+    NEW.tree
+= (SELECT tree FROM dbforum.post WHERE id = NEW.parent LIMIT 1) || NEW.ID;
+UPDATE dbforum.forum
+SET posts = posts + 1
+WHERE slug = NEW.forum_slug;
+RETURN NEW;
+END
+$$
+LANGUAGE plpgsql;
+
+
+CREATE
+OR REPLACE FUNCTION dbforum.insert_thread_vote() RETURNS TRIGGER AS
+$$
+BEGIN
+UPDATE dbforum.thread
+SET votes=(votes + NEW.voice)
+WHERE id = NEW.thread_id;
+RETURN NEW;
+END
+$$
+LANGUAGE plpgsql;
+
+CREATE
+OR REPLACE FUNCTION dbforum.update_thread_vote() RETURNS TRIGGER AS
+$$
+BEGIN
+    IF
+NEW.voice > 0 THEN
+UPDATE dbforum.thread
+SET votes=(votes + 2)
+WHERE id = NEW.thread_id;
+ELSE
+UPDATE dbforum.thread
+SET votes=(votes - 2)
+WHERE id = NEW.thread_id;
+END IF;
+RETURN NEW;
+END
+$$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER insert_voice
+    AFTER INSERT
+    ON dbforum.votes
+    FOR EACH ROW
+    EXECUTE FUNCTION dbforum.insert_thread_vote();
+
+
+CREATE TRIGGER update_voice
+    AFTER UPDATE
+    ON dbforum.votes
+    FOR EACH ROW
+    EXECUTE FUNCTION dbforum.update_thread_vote();
+
+
+CREATE TRIGGER thread_insert
+    AFTER INSERT
+    ON dbforum.thread
+    FOR EACH ROW
+    EXECUTE FUNCTION dbforum.update_forum_threads();
+
+CREATE TRIGGER thread_insert_user_forum
+    AFTER INSERT
+    ON dbforum.thread
+    FOR EACH ROW
+    EXECUTE FUNCTION dbforum.insert_forum_user();
+
+CREATE TRIGGER post_insert
+    BEFORE INSERT
+    ON dbforum.post
+    FOR EACH ROW
+    EXECUTE FUNCTION dbforum.update_forum_posts();
+
+CREATE TRIGGER post_insert_forum_usert
+    AFTER INSERT
+    ON dbforum.post
+    FOR EACH ROW
+    EXECUTE FUNCTION dbforum.insert_forum_user();
