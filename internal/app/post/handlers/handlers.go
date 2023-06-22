@@ -26,10 +26,7 @@ func NewHandler(useCase postUsecase.UseCase) *Handlers {
 
 func (h *Handlers) GetInfo(ctx *fasthttp.RequestCtx) {
 	id, _ := strconv.ParseUint(ctx.UserValue("id").(string), 10, 64)
-	// Включение полной информации о соответвующем объекте сообщения.
-	// Если тип объекта не указан, то полная информация об этих объектах не
-	// передаётся.
-	// values: user/forum/thread
+
 	related := strings.Split(string(ctx.QueryArgs().Peek("related")), ",")
 
 	postInfo, err := h.useCase.GetPostInfoByID(id, related)

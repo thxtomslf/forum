@@ -121,26 +121,10 @@ func (h *Handlers) GetPosts(ctx *fasthttp.RequestCtx) {
 		limit = 100
 	}
 
-	// Дата создания ветви обсуждения, с которой будут выводиться записи
-	// (ветвь обсуждения с указанной датой попадает в результат выборки).
 	since := int64(ctx.QueryArgs().GetUintOrZero("since"))
-
-	// Вид сортировки:
-	// flat - по дате, комментарии выводятся простым списком в порядке создания;
-	// tree - древовидный, комментарии выводятся отсортированные в дереве
-	// по N штук;
-	// parent_tree - древовидные с пагинацией по родительским (parent_tree),
-	// на странице N родительских комментов и все комментарии прикрепленные
-	// к ним, в древвидном отображение.
-	// Подробности: https://park.mail.ru/blog/topic/view/1191/
-	//
-	// Available values : flat, tree, parent_tree
-	//
-	// Default value : flat
 
 	sort := string(ctx.QueryArgs().Peek("sort"))
 
-	// Флаг сортировки по убыванию.
 	desc := ctx.QueryArgs().GetBool("desc")
 
 	var posts models.PostList
