@@ -42,6 +42,10 @@ const (
 
 	selectVoteInfo = "SELECT nickname, voice FROM dbforum.votes WHERE thread_id = $1 AND nickname = $2"
 
+	updateThreadVoteBySlug = "UPDATE dbforum.thread SET votes=$1 WHERE slug=$2"
+
+	updateThreadVoteByID = "UPDATE dbforum.thread SET votes=$1 WHERE id=$2"
+
 	intertVote = "INSERT INTO dbforum.votes(nickname, voice, thread_id) VALUES ($1, $2, $3)"
 
 	updateUserVote = "UPDATE dbforum.votes SET voice=$1 WHERE thread_id = $2 AND nickname = $3"

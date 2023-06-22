@@ -4,7 +4,7 @@ import (
 	customErr "forum/internal/app/errors"
 	"forum/internal/app/httputils"
 	"forum/internal/app/models"
-	threadUsecase "forum/internal/app/thread/usecase"
+	threadUseCase "forum/internal/app/thread/usecase"
 	"github.com/mailru/easyjson"
 	"github.com/pkg/errors"
 	"github.com/valyala/fasthttp"
@@ -14,10 +14,10 @@ import (
 )
 
 type Handlers struct {
-	useCase threadUsecase.UseCase
+	useCase threadUseCase.UseCase
 }
 
-func NewHandler(useCase threadUsecase.UseCase) *Handlers {
+func NewHandler(useCase threadUseCase.UseCase) *Handlers {
 	return &Handlers{
 		useCase: useCase,
 	}
