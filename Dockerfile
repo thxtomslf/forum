@@ -6,7 +6,7 @@ RUN CGO_ENABLED=0 go build -o bin/main -v ./cmd/main.go
 
 FROM ubuntu:20.04
 
-COPY schema.sql /
+COPY initdb.sql /
 
 RUN apt-get -y update && apt-get install -y tzdata
 
@@ -19,7 +19,7 @@ RUN apt-get -y update && apt-get install -y postgresql-$PGVER postgresql-contrib
 USER postgres
 
 RUN /etc/init.d/postgresql start &&\
-    psql -U postgres -d postgres -a -f /schema.sql &&\
+    psql -U postgres -d postgres -a -f /initdb.sql &&\
     /etc/init.d/postgresql stop
 
 RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PGVER/main/pg_hba.conf
