@@ -9,4 +9,5 @@ var (
 	ErrUserNotFound   = errors.New("user not found")
 	ErrForumNotFound  = errors.New("forum not found")
 	ErrThreadNotFound = errors.New("thread not found")
+	ErrPostNotFound   = errors.New("post not found")
 )

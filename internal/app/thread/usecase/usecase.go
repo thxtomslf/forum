@@ -2,17 +2,20 @@ package usecase
 
 import (
 	"forum/internal/app/models"
+	postRepo "forum/internal/app/post/repository"
 	threadRepo "forum/internal/app/thread/repository"
 	"strconv"
 )
 
 type UseCase struct {
 	threadRepo threadRepo.Repository
+	postRepo   postRepo.Repository
 }
 
-func NewUseCase(threadRepo threadRepo.Repository) *UseCase {
+func NewUseCase(threadRepo threadRepo.Repository, postRepo postRepo.Repository) *UseCase {
 	return &UseCase{
 		threadRepo: threadRepo,
+		postRepo:   postRepo,
 	}
 }
 
@@ -56,4 +59,26 @@ func (u *UseCase) VoteThread(idOrSlug string, vote models.Vote) (models.Thread, 
 		return models.Thread{}, err
 	}
 	return thread, nil
+}
+
+func (u *UseCase) CreatePosts(idOrSlug string, posts []models.Post) ([]models.Post, error) {
+	posts, err := u.postRepo.CreatePosts(idOrSlug, posts)
+	if err != nil {
+		return nil, err
+	}
+	if posts == nil {
+		return []models.Post{}, err
+	}
+	return posts, nil
+}
+
+func (u *UseCase) GetPosts(idOrSlug string, limit int64, since int64, sort string, desc bool) ([]models.Post, error) {
+	posts, err := u.postRepo.GetPosts(idOrSlug, limit, since, desc, sort)
+	if err != nil {
+		return nil, err
+	}
+	if posts == nil {
+		return []models.Post{}, nil
+	}
+	return posts, nil
 }

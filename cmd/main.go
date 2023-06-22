@@ -18,6 +18,10 @@ import (
 	forumRepo "forum/internal/app/forum/repository"
 	forumUsecase "forum/internal/app/forum/usecase"
 
+	postHandlers "forum/internal/app/post/handlers"
+	postRepo "forum/internal/app/post/repository"
+	postUCase "forum/internal/app/post/usecase"
+
 	router2 "github.com/fasthttp/router"
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
@@ -51,16 +55,22 @@ func main() {
 	if err := forumRepository.Prepare(); err != nil {
 		log.Fatalln(err)
 	}
+	postRepository := postRepo.NewRepo(postgres.GetPostgres())
+	if err := postRepository.Prepare(); err != nil {
+		log.Fatalln(err)
+	}
 
 	userUseCase := userUsecase.NewUseCase(*userRepository)
 	serviceUseCase := serviceUsecase.NewUseCase(*serviceRepository)
-	threadUseCase := threadUCase.NewUseCase(*threadRepository)
+	threadUseCase := threadUCase.NewUseCase(*threadRepository, *postRepository)
 	forumUseCase := forumUsecase.NewUseCase(*forumRepository, *userRepository, *threadRepository)
+	postUseCase := postUCase.NewUseCase(*postRepository, *userRepository, *threadRepository, *forumRepository)
 
 	forumHandler := forumHandlers.NewHandler(*forumUseCase)
 	userHandler := userHandlers.NewHandler(*userUseCase)
 	serviceHandler := serviceHandlers.NewHandler(*serviceUseCase)
 	threadHandler := threadHandlers.NewHandler(*threadUseCase)
+	postHandler := postHandlers.NewHandler(*postUseCase)
 
 	router := router2.New()
 
@@ -80,19 +90,23 @@ func main() {
 
 	router.POST("/api/thread/{slug_or_id}/vote", threadHandler.VoteThread)
 
+	router.GET("/api/thread/{slug_or_id}/posts", threadHandler.GetPosts)
+
+	router.POST("/api/thread/{slug_or_id}/create", threadHandler.CreatePost)
+
 	router.POST("/api/forum/create", forumHandler.Create)
 
-	//done
 	router.GET("/api/forum/{slug}/details", forumHandler.Details)
 
-	//done
 	router.POST("/api/forum/{slug}/create", forumHandler.CreateThread)
 
-	//done
 	router.GET("/api/forum/{slug}/users", forumHandler.GetUsers)
 
-	//done
 	router.GET("/api/forum/{slug}/threads", forumHandler.GetThreads)
+
+	router.GET("/api/post/{id}/details", postHandler.GetInfo)
+
+	router.POST("/api/post/{id}/details", postHandler.ChangeMessage)
 
 	if err := fasthttp.ListenAndServe(":5000", router.Handler); err != nil {
 		log.Fatal(err)
