@@ -100,6 +100,8 @@ UNLOGGED TABLE dbforum.post
 );
 
 create index posts_thread_id_parent_idx on dbforum.post (thread_id, parent);
+create index posts_tree_1_id_idx on dbforum.post ((tree[1]), id);
+create index posts_tree_1_desc_tree_id_idx on dbforum.post ((tree[1]) DESC, tree, id);
 create index posts_tree_id_idx on dbforum.post (tree, id);
 create index posts_tree_idx on dbforum.post using gin (tree);
 
